@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -45,7 +45,7 @@ async def register(
         )
     
     # Create organization
-    schema_name = f"tenant_{user_data.organization_slug}"
+    schema_name = f"tenant_{user_data.organization_slug.replace('-', '_')}"
     organization = Organization(
         name=user_data.organization_name,
         slug=user_data.organization_slug,

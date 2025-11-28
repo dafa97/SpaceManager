@@ -11,7 +11,6 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """User creation schema."""
     password: str
-    organization_id: int
 
 
 class UserUpdate(BaseModel):
@@ -28,6 +27,5 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     is_superuser: bool
-    organization_id: int
     created_at: datetime
     updated_at: datetime

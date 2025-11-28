@@ -22,4 +22,4 @@ class User(BaseModel):
     tokens: Mapped[list["Token"]] = relationship("Token", back_populates="user")
 
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, email={self.email}, org_id={self.organization_id})>"
+        return f"<User(id={self.id}, email={self.email})>"

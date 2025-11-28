@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.user import User
 from app.models.tenant import Organization
@@ -21,7 +22,7 @@ async def list_organizations(
     result = await db.execute(
         select(OrganizationMember)
         .where(OrganizationMember.user_id == current_user.id)
-        .options(select(OrganizationMember).joinedload(OrganizationMember.organization))
+        .options(selectinload(OrganizationMember.organization))
     )
     memberships = result.scalars().all()
     return memberships
@@ -46,7 +47,7 @@ async def create_organization(
         )
     
     # Create organization
-    schema_name = f"tenant_{org_data.slug}"
+    schema_name = f"tenant_{org_data.slug.replace('-', '_')}"
     organization = Organization(
         name=org_data.name,
         slug=org_data.slug,

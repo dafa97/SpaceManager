@@ -20,7 +20,7 @@ class OrganizationMemberResponse(BaseModel):
     organization: OrganizationResponse
     role: str
     status: str
-    joined_at: datetime
+    created_at: datetime  # Changed from joined_at
 
     class Config:
         from_attributes = True

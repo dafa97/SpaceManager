@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Any
+from uuid import uuid4
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def create_access_token(subject: str | Any, tenant_id: int, expires_delta: timedelta = None) -> str:
@@ -38,17 +36,20 @@ def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) ->
     to_encode = {
         "exp": expire,
         "sub": str(subject),
-        "type": "refresh"
+        "type": "refresh",
+        "jti": str(uuid4())  # Add unique identifier
     }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 
+import bcrypt
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password for storing."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
