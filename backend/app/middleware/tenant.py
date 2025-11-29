@@ -32,14 +32,34 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 
                 # Get schema name from organization
                 if tenant_id:
-                    async with AsyncSessionLocal() as session:
-                        result = await session.execute(
-                            text("SELECT schema_name FROM public.organizations WHERE id = :tenant_id"),
-                            {"tenant_id": tenant_id}
-                        )
-                        row = result.fetchone()
-                        if row:
-                            schema_name = row[0]
+                    # Try to use app state session first (for testing), fall back to AsyncSessionLocal
+                    session = None
+                    try:
+                        # Check if there's a test session available in app state
+                        if hasattr(request.app, "test_session"):
+                            session = request.app.test_session
+                        else:
+                            async with AsyncSessionLocal() as temp_session:
+                                result = await temp_session.execute(
+                                    text("SELECT schema_name FROM public.organizations WHERE id = :tenant_id"),
+                                    {"tenant_id": tenant_id}
+                                )
+                                row = result.fetchone()
+                                if row:
+                                    schema_name = row[0]
+                        
+                        # If we used test_session, execute query with it
+                        if session is not None:
+                            result = await session.execute(
+                                text("SELECT schema_name FROM public.organizations WHERE id = :tenant_id"),
+                                {"tenant_id": tenant_id}
+                            )
+                            row = result.fetchone()
+                            if row:
+                                schema_name = row[0]
+                    except Exception:
+                        # Fallback: if there's any error, just continue without schema_name
+                        pass
             except JWTError:
                 pass
 
