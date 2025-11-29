@@ -13,9 +13,10 @@ router = APIRouter()
 
 async def set_tenant_schema(db: AsyncSession, user: User):
     """Helper to set the search path to tenant schema."""
+    # user.tenant_id is injected by get_current_user dependency
     result = await db.execute(
         text("SELECT schema_name FROM public.organizations WHERE id = :org_id"),
-        {"org_id": user.organization_id}
+        {"org_id": user.tenant_id}
     )
     row = result.fetchone()
     if row:

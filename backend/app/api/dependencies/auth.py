@@ -55,6 +55,9 @@ async def get_current_user(
             detail="Inactive user"
         )
     
+    # Inject tenant_id from token into user object (temporary attribute)
+    user.tenant_id = token_data.tenant_id
+    
     return user
 
 

@@ -1,11 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { CreateSpaceRequest, Space, UpdateSpaceRequest } from '@/types/space';
 
-// Use Next.js API proxy (routes through /api/* on same domain)
-const API_URL = typeof window !== 'undefined' ? '' : 'http://backend:8000';
-
-// Create axios instance
+// Always use relative URLs - Next.js proxy handles routing to backend
 export const api = axios.create({
-    baseURL: `${API_URL}/api/v1`,
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -39,13 +37,10 @@ api.interceptors.response.use(
                     throw new Error('No refresh token');
                 }
 
-                // Call refresh endpoint
+                // Call refresh endpoint using relative URL (goes through proxy)
                 const response = await axios.post(
-                    `${API_URL}/api/v1/auth/refresh`,
-                    null,
-                    {
-                        params: { refresh_token: refreshToken }
-                    }
+                    '/api/auth/refresh',
+                    { refresh_token: refreshToken }
                 );
 
                 const { access_token, refresh_token } = response.data;
@@ -71,5 +66,27 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+export const spacesApi = {
+    list: async () => {
+        const response = await api.get<Space[]>('/spaces');
+        return response.data;
+    },
+    create: async (data: CreateSpaceRequest) => {
+        const response = await api.post<Space>('/spaces', data);
+        return response.data;
+    },
+    get: async (id: string) => {
+        const response = await api.get<Space>(`/spaces/${id}`);
+        return response.data;
+    },
+    update: async (id: string, data: UpdateSpaceRequest) => {
+        const response = await api.put<Space>(`/spaces/${id}`, data);
+        return response.data;
+    },
+    delete: async (id: string) => {
+        await api.delete(`/spaces/${id}`);
+    }
+};
 
 export default api;
