@@ -1,7 +1,7 @@
 import pytest
 import asyncio
-from typing import AsyncGenerator, Generator
-from httpx import AsyncClient
+from typing import AsyncGenerator
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import text
 from app.main import app
@@ -22,21 +22,21 @@ from app.models.member import OrganizationMember
 # In a real scenario, we'd use a separate test DB.
 TEST_DATABASE_URL = str(settings.DATABASE_URL)
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestingSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
+TestingSessionLocal = async_sessionmaker(
+    engine, 
+    expire_on_commit=False, 
+    class_=AsyncSession
+)
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# pytest-asyncio configuration
+pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
         yield session
-        # Rollback is handled by the fact that we don't commit in tests usually,
-        # or we can explicitly rollback here.
+        # Cleanup: rollback any uncommitted changes
         await session.rollback()
 
 @pytest.fixture
@@ -45,7 +45,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    async with AsyncClient(app=app, base_url="http://test") as c:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", follow_redirects=True) as c:
         yield c
     app.dependency_overrides.clear()
 
@@ -63,34 +64,23 @@ async def test_org(db_session: AsyncSession) -> Organization:
         is_active=True
     )
     db_session.add(org)
-    await db_session.commit()
+    await db_session.flush()  # Flush instead of commit to avoid transaction issues
     await db_session.refresh(org)
     
-    # Create the schema
+    # Create the schema using the same session
     await db_session.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
-    await db_session.commit()
+    await db_session.flush()
     
     # Create tables in the schema
-    # We need to create the tables for the tenant models.
-    # This is tricky because we need to bind the engine to the schema or use the metadata.
-    # For now, let's assume the app handles table creation or we do it manually for Space.
-    # The Space model is defined in app.models.space.
-    # We can use `Base.metadata.create_all` but we need to specify the schema.
-    
-    # Actually, the app uses Alembic for migrations.
-    # For tests, we can just create the specific table we need.
-    from app.models.space import Space
-    
-    async with engine.begin() as conn:
-        # We need to set the search path to the tenant schema to create tables there?
-        # Or we can just use the table name with schema?
-        # SQLAlchemy models usually don't have schema hardcoded.
-        # The TenantMiddleware sets the search path.
-        
-        # Let's try setting the search path and creating tables.
+    # Use a raw connection from the engine to set search path and create tables
+    async with engine.connect() as conn:
         await conn.execute(text(f"SET search_path TO {schema_name}, public"))
         await conn.run_sync(Base.metadata.create_all)
-        
+        await conn.commit()
+    
+    # Finally commit the organization
+    await db_session.commit()
+    
     return org
 
 @pytest.fixture

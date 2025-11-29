@@ -16,7 +16,7 @@ async def test_create_space(client: AsyncClient, auth_headers: dict):
         },
         headers=auth_headers
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test Space"
     assert data["space_type"] == "hourly"

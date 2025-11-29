@@ -16,7 +16,7 @@ class Token(BaseModel):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("public.users.id"), nullable=False, index=True
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # Relationships

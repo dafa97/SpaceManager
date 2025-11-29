@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from app.core.database import get_db
@@ -11,6 +12,9 @@ from app.models.token import Token as RefreshTokenModel
 from app.schemas.auth import Token, UserLogin, UserRegister
 from app.schemas.user import UserResponse
 from app.api.dependencies.auth import get_current_user
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 router = APIRouter()
 
@@ -92,7 +96,7 @@ async def register(
         token=refresh_token,
         token_type="refresh",
         user_id=user.id,
-        expires_at=datetime.utcnow() + timedelta(days=7) # Hardcoded for now, should use settings
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7) # Hardcoded for now, should use settings
     )
     db.add(db_token)
     await db.commit()
@@ -160,7 +164,7 @@ async def login(
         token=refresh_token,
         token_type="refresh",
         user_id=user.id,
-        expires_at=datetime.utcnow() + timedelta(days=7)
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7)
     )
     db.add(db_token)
     await db.commit()
@@ -183,13 +187,15 @@ async def get_current_user_info(
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(
-    refresh_token: str,
+async def refresh_token_endpoint(
+    request_body: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Token:
     """
     Refresh access token using refresh token.
     """
+    refresh_token = request_body.refresh_token
+    
     # In a real app, verify the refresh token signature and check against DB
     # For now, we'll assume it's valid if it exists in DB and is not expired
     
@@ -206,7 +212,7 @@ async def refresh_token(
             detail="Invalid refresh token"
         )
         
-    if db_token.expires_at < datetime.utcnow():
+    if db_token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token expired"
@@ -254,7 +260,7 @@ async def refresh_token(
         token=new_refresh_token,
         token_type="refresh",
         user_id=user.id,
-        expires_at=datetime.utcnow() + timedelta(days=7)
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7)
     )
     db.add(new_db_token)
     await db.commit()

@@ -1,15 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.middleware.tenant import TenantMiddleware
 from app.api.routes import auth, spaces, reservations, orgs
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup
+    print(f"Starting {settings.APP_NAME}...")
+    print(f"Environment: {settings.ENVIRONMENT}")
+    print(f"Debug mode: {settings.DEBUG}")
+    yield
+    # Shutdown
+    print(f"Shutting down {settings.APP_NAME}...")
+
 
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
     debug=settings.DEBUG,
     default_response_class=ORJSONResponse,
+    lifespan=lifespan,
 )
 
 # Set up CORS
@@ -49,17 +64,3 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Run on application startup."""
-    print(f"Starting {settings.APP_NAME}...")
-    print(f"Environment: {settings.ENVIRONMENT}")
-    print(f"Debug mode: {settings.DEBUG}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on application shutdown."""
-    print(f"Shutting down {settings.APP_NAME}...")

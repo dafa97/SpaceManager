@@ -67,9 +67,9 @@ def run_test():
     print(f"   Success! User: {user['email']}")
 
     print("\n3. Testing Token Refresh...")
-    # Refresh token endpoint expects query param 'refresh_token'
-    refresh_url = f"{BASE_URL}/auth/refresh?refresh_token={refresh_token}"
-    status, new_tokens = make_request(refresh_url, "POST")
+    # Refresh token endpoint expects JSON body with refresh_token
+    refresh_data = {"refresh_token": refresh_token}
+    status, new_tokens = make_request(f"{BASE_URL}/auth/refresh", "POST", refresh_data, headers={"Content-Type": "application/json"})
     
     if status != 200:
         print(f"   Failed: {status} - {new_tokens}")
