@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
+from app.core.tenant_schema import init_tenant_schema
 from app.models.user import User
 from app.models.tenant import Organization
 from app.models.member import OrganizationMember
@@ -57,8 +58,8 @@ async def create_organization(
     db.add(organization)
     await db.flush()
     
-    # Create tenant schema
-    await db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+    # Initialize tenant schema (creates schema and all required tables)
+    await init_tenant_schema(db, schema_name)
     
     # Create membership (OWNER)
     member = OrganizationMember(

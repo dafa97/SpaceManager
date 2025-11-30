@@ -4,12 +4,12 @@ from sqlalchemy import text
 
 async def cleanup():
     async with AsyncSessionLocal() as session:
-        await session.execute(text("DELETE FROM public.tokens"))
-        await session.execute(text("DELETE FROM public.organization_members"))
-        await session.execute(text("DELETE FROM public.organizations"))
-        await session.execute(text("DELETE FROM public.users"))
+        print("Dropping public schema...")
+        await session.execute(text("DROP SCHEMA public CASCADE"))
+        print("Recreating public schema...")
+        await session.execute(text("CREATE SCHEMA public"))
         await session.commit()
-        print("Database cleaned")
+        print("Database schema reset successfully")
 
 if __name__ == "__main__":
     asyncio.run(cleanup())

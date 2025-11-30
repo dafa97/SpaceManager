@@ -1,4 +1,4 @@
-from sqlalchemy import String, Numeric, Integer, Enum as SQLEnum
+from sqlalchemy import String, Numeric, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import BaseModel
 import enum
@@ -20,8 +20,10 @@ class Space(BaseModel):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
-    space_type: Mapped[SpaceType] = mapped_column(
-        SQLEnum(SpaceType), nullable=False, index=True
+    # Use String instead of SQLEnum to avoid issues with tenant-specific enum types
+    # The enum validation is still enforced at the Pydantic schema level
+    space_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, index=True
     )
     
     # Capacity and pricing

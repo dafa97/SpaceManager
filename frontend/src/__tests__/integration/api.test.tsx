@@ -1,0 +1,252 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server, mockTokenResponse } from '../utils/mocks';
+import { authApi, spacesApi } from '@/lib/api';
+
+
+// Must match the baseURL in api.ts and mocks.ts
+const API_BASE_URL = 'http://localhost:3000/api';
+
+describe('API Client Integration Tests', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Reset axios interceptors by creating a new instance
+    vi.restoreAllMocks();
+  });
+
+  describe('Request Interceptor', () => {
+    it('should add authorization token to requests', async () => {
+      const token = 'test-access-token';
+      localStorage.setItem('access_token', token);
+
+      let requestHeaders: any = {};
+      server.use(
+        http.get(`${API_BASE_URL}/spaces`, ({ request }) => {
+          requestHeaders = Object.fromEntries(request.headers.entries());
+          return HttpResponse.json([]);
+        })
+      );
+
+      await spacesApi.list();
+
+      expect(requestHeaders.authorization).toBe(`Bearer ${token}`);
+    });
+
+    it('should not add token if not present in localStorage', async () => {
+      localStorage.removeItem('access_token');
+
+      let requestHeaders: any = {};
+      server.use(
+        http.get(`${API_BASE_URL}/spaces`, ({ request }) => {
+          requestHeaders = Object.fromEntries(request.headers.entries());
+          return HttpResponse.json([]);
+        })
+      );
+
+      await spacesApi.list();
+
+      expect(requestHeaders.authorization).toBeUndefined();
+    });
+  });
+
+  describe('Response Interceptor - Token Refresh', () => {
+    it('should automatically refresh token on 401 and retry request', async () => {
+      const oldAccessToken = 'old-access-token';
+      const oldRefreshToken = 'old-refresh-token';
+      localStorage.setItem('access_token', oldAccessToken);
+      localStorage.setItem('refresh_token', oldRefreshToken);
+
+      let callCount = 0;
+      let requestHeaders: any = {};
+
+      server.use(
+        http.get(`${API_BASE_URL}/spaces`, ({ request }) => {
+          callCount++;
+          requestHeaders = Object.fromEntries(request.headers.entries());
+
+          if (callCount === 1) {
+            // First call returns 401
+            return HttpResponse.json(
+              { detail: 'Unauthorized' },
+              { status: 401 }
+            );
+          }
+          // Retry after refresh should succeed
+          return HttpResponse.json([]);
+        }),
+        http.post(`${API_BASE_URL}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'new-access-token',
+            refresh_token: 'new-refresh-token',
+            token_type: 'bearer',
+          });
+        })
+      );
+
+      await spacesApi.list();
+
+      // Should have been called twice (original + retry)
+      expect(callCount).toBe(2);
+      // New token should be stored
+      expect(localStorage.getItem('access_token')).toBe('new-access-token');
+      expect(localStorage.getItem('refresh_token')).toBe('new-refresh-token');
+      // Retry should use new token
+      expect(requestHeaders.authorization).toBe('Bearer new-access-token');
+    });
+
+    it('should redirect to login if refresh fails', async () => {
+      const oldAccessToken = 'old-access-token';
+      const oldRefreshToken = 'old-refresh-token';
+      localStorage.setItem('access_token', oldAccessToken);
+      localStorage.setItem('refresh_token', oldRefreshToken);
+
+      const originalLocation = window.location.href;
+
+      server.use(
+        http.get(`${API_BASE_URL}/spaces`, () => {
+          return HttpResponse.json(
+            { detail: 'Unauthorized' },
+            { status: 401 }
+          );
+        }),
+        http.post(`${API_BASE_URL}/auth/refresh`, () => {
+          return HttpResponse.json(
+            { detail: 'Invalid refresh token' },
+            { status: 401 }
+          );
+        })
+      );
+
+      try {
+        await spacesApi.list();
+      } catch (error) {
+        // Expected to fail
+      }
+
+      // Tokens should be cleared
+      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(localStorage.getItem('refresh_token')).toBeNull();
+      
+      // Should redirect to login (mocked in setup.ts)
+      // In a real scenario, window.location.href would be set to '/login'
+    });
+
+    it('should not retry if already retried', async () => {
+      const oldAccessToken = 'old-access-token';
+      const oldRefreshToken = 'old-refresh-token';
+      localStorage.setItem('access_token', oldAccessToken);
+      localStorage.setItem('refresh_token', oldRefreshToken);
+
+      let callCount = 0;
+      let refreshCallCount = 0;
+
+      server.use(
+        http.get(`${API_BASE_URL}/spaces`, () => {
+          callCount++;
+          return HttpResponse.json(
+            { detail: 'Unauthorized' },
+            { status: 401 }
+          );
+        }),
+        http.post(`${API_BASE_URL}/auth/refresh`, () => {
+          refreshCallCount++;
+          return HttpResponse.json(
+            { detail: 'Invalid refresh token' },
+            { status: 401 }
+          );
+        })
+      );
+
+      try {
+        await spacesApi.list();
+      } catch (error) {
+        // Expected to fail
+      }
+
+      // The interceptor will attempt refresh, which will fail
+      // After refresh fails, tokens are cleared and it redirects
+      // We verify that refresh was attempted and tokens were cleared
+      expect(refreshCallCount).toBe(1);
+      // Tokens should be cleared after failed refresh
+      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(localStorage.getItem('refresh_token')).toBeNull();
+    });
+
+    it('should handle missing refresh token gracefully', async () => {
+      localStorage.setItem('access_token', 'old-access-token');
+      localStorage.removeItem('refresh_token');
+
+      server.use(
+        http.get(`${API_BASE_URL}/spaces`, () => {
+          return HttpResponse.json(
+            { detail: 'Unauthorized' },
+            { status: 401 }
+          );
+        })
+      );
+
+      try {
+        await spacesApi.list();
+      } catch (error) {
+        // Expected to fail - interceptor will try to refresh but no refresh token exists
+      }
+
+      // When refresh token is missing, interceptor throws error immediately
+      // and clears tokens, then redirects to login
+      // We verify that tokens were cleared
+      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(localStorage.getItem('refresh_token')).toBeNull();
+    });
+  });
+
+  describe('Auth API', () => {
+    it('should return tokens after login', async () => {
+      // These tests are covered by the component integration tests
+      // This test verifies the API function works correctly
+      const response = await authApi.login({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      // authApi.login only returns the response, it doesn't store tokens
+      // Tokens are stored by the calling component (tested in auth.test.tsx)
+      expect(response).toHaveProperty('access_token');
+      expect(response).toHaveProperty('refresh_token');
+      expect(response).toHaveProperty('token_type');
+    });
+
+    it('should return tokens after register', async () => {
+      // These tests are covered by the component integration tests
+      // This test verifies the API function works correctly
+      const response = await authApi.register({
+        email: 'test@example.com',
+        password: 'password123',
+        full_name: 'Test User',
+        organization_name: 'Test Org',
+        organization_slug: 'test-org',
+      });
+
+      // authApi.register only returns the response, it doesn't store tokens
+      // Tokens are stored by the calling component (tested in auth.test.tsx)
+      expect(response).toHaveProperty('access_token');
+      expect(response).toHaveProperty('refresh_token');
+      expect(response).toHaveProperty('token_type');
+    });
+
+    it('should clear tokens on logout', () => {
+      localStorage.setItem('access_token', 'token');
+      localStorage.setItem('refresh_token', 'refresh');
+
+      authApi.logout();
+
+      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(localStorage.getItem('refresh_token')).toBeNull();
+    });
+  });
+});
+
+

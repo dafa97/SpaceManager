@@ -1,0 +1,57 @@
+﻿============================================================
+­ƒôØ STEP 1: Registering fresh user and organization
+============================================================
+Organization slug: fresh-org-5327
+Registration status: 201
+Ô£à Registration successful!
+   Access token: eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...
+
+============================================================
+­ƒÅó STEP 2: Creating a test space
+============================================================
+Space data: Executive Board Room
+
+­ƒôè Response status: 201
+Ô£à Space created successfully!
+
+Space details:
+  ID: 1
+  Name: Executive Board Room
+  Type: hourly
+  Capacity: 20
+  Price: $150.0
+  Floor: Executive Floor
+  Area: 50.5 sqm
+
+============================================================
+­ƒôï STEP 3: Listing all spaces
+============================================================
+Ô£à Found 1 space(s):
+  - Executive Board Room (hourly) - $150.0 - Capacity: 20
+
+============================================================
+Ô£Å´©Å  STEP 4: Updating the space
+============================================================
+Ô£à Space updated successfully!
+  New price: $175.0
+  New capacity: 25
+
+============================================================
+­ƒÅó STEP 5: Creating a daily rental space
+============================================================
+Ô£à Second space created successfully!
+  Name: Co-working Space
+  Type: daily
+
+============================================================
+­ƒôï STEP 6: Final space listing
+============================================================
+Ô£à Total spaces: 2
+  1. Executive Board Room
+     Type: hourly, Price: $175.0, Capacity: 25
+  2. Co-working Space
+     Type: daily, Price: $50.0, Capacity: 30
+
+­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë
+ALL TESTS PASSED SUCCESSFULLY!
+­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë­ƒÄë

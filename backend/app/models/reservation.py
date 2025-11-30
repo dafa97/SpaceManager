@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, Integer, Numeric, Enum as SQLEnum
+from sqlalchemy import String, DateTime, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import BaseModel
 import enum
@@ -34,9 +34,11 @@ class Reservation(BaseModel):
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     
     # Status
-    status: Mapped[ReservationStatus] = mapped_column(
-        SQLEnum(ReservationStatus, name="reservation_status"),
-        default=ReservationStatus.PENDING,
+    # Use String instead of SQLEnum to avoid issues with tenant-specific enum types
+    # The enum validation is still enforced at the Pydantic schema level
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default=ReservationStatus.PENDING.value,
         nullable=False,
         index=True
     )
