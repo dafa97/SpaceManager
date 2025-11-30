@@ -1,12 +1,15 @@
+export type SpaceType = 'hourly' | 'daily' | 'monthly';
+
 export interface Space {
-    id: string;
-    organization_id: string;
+    id: number;
     name: string;
     description?: string;
-    capacity: number;
-    price_per_hour: number;
-    amenities?: string[];
-    is_active: boolean;
+    space_type: SpaceType;
+    capacity?: number;
+    price_per_unit: number;
+    is_available: boolean;
+    floor?: string;
+    area_sqm?: number;
     created_at: string;
     updated_at: string;
 }
@@ -14,16 +17,21 @@ export interface Space {
 export interface CreateSpaceRequest {
     name: string;
     description?: string;
-    capacity: number;
-    price_per_hour: number;
-    amenities?: string[];
+    space_type: SpaceType;
+    capacity?: number;
+    price_per_unit: number;
+    is_available?: boolean;
+    floor?: string;
+    area_sqm?: number;
 }
 
 export interface UpdateSpaceRequest {
     name?: string;
     description?: string;
+    space_type?: SpaceType;
     capacity?: number;
-    price_per_hour?: number;
-    amenities?: string[];
-    is_active?: boolean;
+    price_per_unit?: number;
+    is_available?: boolean;
+    floor?: string;
+    area_sqm?: number;
 }

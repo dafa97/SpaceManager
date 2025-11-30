@@ -61,7 +61,38 @@ async def register(
     
     # Create tenant schema
     await db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
-    
+
+    # Create enum type for space_type in tenant schema
+    await db.execute(text(f"""
+        DO $$ BEGIN
+            CREATE TYPE {schema_name}.space_type AS ENUM ('hourly', 'daily', 'monthly');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    """))
+
+    # Create spaces table in tenant schema
+    await db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS {schema_name}.spaces (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            space_type {schema_name}.space_type NOT NULL,
+            capacity INTEGER,
+            price_per_unit NUMERIC(10, 2) NOT NULL,
+            is_available BOOLEAN NOT NULL DEFAULT TRUE,
+            floor VARCHAR(50),
+            area_sqm NUMERIC(10, 2),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+
+    # Create indexes for spaces table
+    await db.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{schema_name.replace('.', '_')}_spaces_id ON {schema_name}.spaces (id)"))
+    await db.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{schema_name.replace('.', '_')}_spaces_name ON {schema_name}.spaces (name)"))
+    await db.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{schema_name.replace('.', '_')}_spaces_space_type ON {schema_name}.spaces (space_type)"))
+
     # Create user
     user = User(
         email=user_data.email,

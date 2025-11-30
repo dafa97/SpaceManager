@@ -21,7 +21,7 @@ class Space(BaseModel):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
     space_type: Mapped[SpaceType] = mapped_column(
-        SQLEnum(SpaceType, name="space_type"), nullable=False, index=True
+        SQLEnum(SpaceType), nullable=False, index=True
     )
     
     # Capacity and pricing

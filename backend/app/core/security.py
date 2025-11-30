@@ -27,9 +27,9 @@ def create_access_token(subject: str | Any, tenant_id: int, expires_delta: timed
 def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) -> str:
     """Create JWT refresh token."""
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
+        expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES if hasattr(settings, "REFRESH_TOKEN_EXPIRE_MINUTES") else 60 * 24 * 7
         )
     

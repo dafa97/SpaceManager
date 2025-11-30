@@ -73,6 +73,32 @@ async def create_organization(
     
     return member
 
+@router.get("/{slug}", response_model=OrganizationResponse)
+async def get_organization_by_slug(
+    slug: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrganizationResponse:
+    """
+    Get organization by slug.
+    """
+    # Check if user is a member of this organization
+    result = await db.execute(
+        select(Organization)
+        .join(OrganizationMember)
+        .where(Organization.slug == slug)
+        .where(OrganizationMember.user_id == current_user.id)
+    )
+    organization = result.scalar_one_or_none()
+    
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+    
+    return organization
+
 @router.post("/{org_id}/invite", status_code=status.HTTP_200_OK)
 async def invite_user(
     org_id: int,

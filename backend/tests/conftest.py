@@ -121,9 +121,10 @@ async def test_user(db_session: AsyncSession, test_org: Organization) -> User:
     """Create a test user."""
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     
+    from app.core.security import get_password_hash
     user = User(
         email=email,
-        hashed_password="hashed_password",
+        hashed_password=get_password_hash("hashed_password"),
         full_name="Test User",
         is_active=True,
         is_superuser=False

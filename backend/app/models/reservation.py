@@ -27,8 +27,8 @@ class Reservation(BaseModel):
     )
     
     # Time slots
-    start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
-    end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     
     # Pricing
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
